@@ -14,22 +14,6 @@ Everything runs on your device in the browser. After the first visit it works of
 
 Models run on [ONNX Runtime Web](https://onnxruntime.ai/), using WebGPU when available and WASM otherwise.
 
-## Run locally
-
-Any static file server works:
-
-```sh
-python3 -m http.server 8000
-```
-
-Then open http://localhost:8000. To test on a phone on the same network, note that the camera and service worker need HTTPS (or localhost).
-
-## Deploy to GitHub Pages
-
-Push the repo to GitHub, then go to **Settings → Pages → Deploy from a branch → `main` / root**.
-
-`sw.js` caches everything for offline use. It also adds the cross-origin isolation headers (which GitHub Pages can't set) so WASM can use multiple threads. When you change the models or vendored files, bump `CACHE` in `sw.js`.
-
 ## Updating the dictionary
 
 `dict/jmdict-eng.txt.gz` (6.5 MB) is generated from [jmdict-simplified](https://github.com/scriptin/jmdict-simplified/releases):
