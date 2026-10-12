@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="theme-color" content="#16120f">
+	<meta name="description" content="Take a photo of a Japanese menu and see how to read every kanji. Runs entirely on your phone.">
+	<title>Izakaya Yomi</title>
+	<link rel="manifest" href="manifest.webmanifest">
+	<link rel="icon" href="icon.svg" type="image/svg+xml">
+	<link rel="apple-touch-icon" href="icon-192.png">
+	<link rel="stylesheet" href="style.css">
+	<script src="vendor/kuromoji/kuromoji.js"></script>
+	<script type="module" src="src/main.js"></script>
+</head>
+<body>
+
+	<header>
+		<h1><span lang="ja" class="logo">読</span> Izakaya Yomi</h1>
+		<div class="toggles">
+			<label class="toggle">
+				<input type="checkbox" id="romaji-toggle">
+				<span>Romaji</span>
+			</label>
+			<label class="toggle">
+				<input type="checkbox" id="english-toggle">
+				<span>English</span>
+			</label>
+		</div>
+	</header>
+
+	<div id="status" role="status" hidden>
+		<span id="status-text"></span>
+		<progress id="status-bar" max="1" hidden></progress>
+	</div>
+
+	<main>
+
+		<section id="intro">
+			<p class="lantern" lang="ja" aria-hidden="true">
+				<ruby>焼<rt>や</rt></ruby>き<ruby>鳥<rt>とり</rt></ruby>
+			</p>
+			<p class="lead">Take a photo of the menu to see how to read every kanji, and what it means.</p>
+			<div class="actions">
+				<label class="button primary">
+					<input type="file" accept="image/*" capture="environment" hidden>
+					Take photo
+				</label>
+				<label class="button">
+					<input type="file" accept="image/*" hidden>
+					Choose photo
+				</label>
+			</div>
+			<p class="note">Everything runs on your device. After the first visit, it works offline.</p>
+			<p class="credits">English meanings from <a href="https://www.edrdg.org/wiki/index.php/JMdict-EDICT_Dictionary_Project">JMdict</a> by the <a href="https://www.edrdg.org/">EDRDG</a>, used under <a href="https://www.edrdg.org/edrdg/licence.html">CC BY-SA 4.0</a>.</p>
+		</section>
+
+		<section id="viewer" hidden>
+			<div class="photo">
+				<canvas id="photo"></canvas>
+				<svg id="overlay" preserveAspectRatio="none"></svg>
+			</div>
+			<p id="summary"></p>
+			<div class="actions sticky">
+				<label class="button primary">
+					<input type="file" accept="image/*" capture="environment" hidden>
+					New photo
+				</label>
+				<button class="button" id="again">Back</button>
+			</div>
+		</section>
+
+	</main>
+
+	<aside id="sheet" hidden>
+		<div class="sheet-nav">
+			<button class="icon-button" id="previous" aria-label="Previous line">
+				<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></svg>
+			</button>
+			<span id="position"></span>
+			<button class="icon-button" id="next" aria-label="Next line">
+				<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+			</button>
+			<button class="icon-button" id="close" aria-label="Close">
+				<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" d="M6 6l12 12M18 6L6 18"/></svg>
+			</button>
+		</div>
+		<div id="card"></div>
+	</aside>
+
+</body>
+</html>
