@@ -32,7 +32,7 @@ Push the repo to GitHub, then go to **Settings → Pages → Deploy from a branc
 
 ## Updating the dictionary
 
-`data/jmdict-eng.txt.gz` (6.5 MB) is generated from [jmdict-simplified](https://github.com/scriptin/jmdict-simplified/releases):
+`dict/jmdict-eng.txt.gz` (6.5 MB) is generated from [jmdict-simplified](https://github.com/scriptin/jmdict-simplified/releases):
 
 ```sh
 gh release download -R scriptin/jmdict-simplified -p 'jmdict-eng-[0-9]*.json.tgz'
@@ -56,4 +56,4 @@ Then bump `CACHE` in `sw.js`.
 - PP-OCRv5 models: Apache 2.0 (PaddlePaddle)
 - ONNX Runtime Web: MIT (`vendor/ort/LICENSE`)
 - kuromoji.js and its IPADIC dictionary: Apache 2.0 (`vendor/kuromoji/LICENSE-2.0.txt`)
-- JMdict: © Electronic Dictionary Research and Development Group, [CC BY-SA 4.0](https://www.edrdg.org/edrdg/licence.html). `data/jmdict-eng.txt.gz` is a modified (trimmed) version and is distributed under the same license.
+- JMdict: © Electronic Dictionary Research and Development Group, [CC BY-SA 4.0](https://www.edrdg.org/edrdg/licence.html). `dict/jmdict-eng.txt.gz` is a modified (trimmed) version and is distributed under the same license.

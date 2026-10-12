@@ -18,7 +18,7 @@ async function gunzip( bytes ) {
 
 export async function loadDictionary( onProgress = () => {} ) {
 
-	const bytes = await gunzip( await fetchWithProgress( new URL( '../data/jmdict-eng.txt.gz', import.meta.url ), onProgress ) );
+	const bytes = await gunzip( await fetchWithProgress( new URL( '../dict/jmdict-eng.txt.gz', import.meta.url ), onProgress ) );
 	const text = new TextDecoder().decode( bytes );
 
 	lines = text.split( '\n' ).filter( line => line !== '' && ! line.startsWith( '#' ) );

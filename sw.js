@@ -1,7 +1,7 @@
 // Caches everything for offline use and adds the headers needed for
 // cross-origin isolation (multithreaded WASM), which GitHub Pages can't set.
 
-const CACHE = 'izakaya-yomi-v3';
+const CACHE = 'izakaya-yomi-v4';
 
 const ASSETS = [
 	'./',
@@ -17,7 +17,7 @@ const ASSETS = [
 	'src/glossary.js',
 	'src/dictionary.js',
 	'src/fetch.js',
-	'data/jmdict-eng.txt.gz',
+	'dict/jmdict-eng.txt.gz',
 	'models/det.onnx',
 	'models/rec.onnx',
 	'models/rec_dict.txt',

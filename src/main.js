@@ -58,7 +58,11 @@ function sessionStorageSet( key, value ) {
 
 // Status
 
+let failed = false;
+
 function setStatus( text, progress = null ) {
+
+	if ( failed ) return;
 
 	status.hidden = text === null;
 	statusText.textContent = text ?? '';
@@ -105,6 +109,7 @@ ready.catch( error => {
 
 	console.error( error );
 	setStatus( `Could not load the models: ${ error.message }` );
+	failed = true;
 
 } );
 

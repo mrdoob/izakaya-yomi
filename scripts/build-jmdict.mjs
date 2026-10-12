@@ -3,7 +3,7 @@
 //
 // Usage: node scripts/build-jmdict.mjs path/to/jmdict-eng-x.y.z.json
 //
-// Output: data/jmdict-eng.txt.gz, one entry per line:
+// Output: dict/jmdict-eng.txt.gz, one entry per line:
 //   kanji forms \t kana forms \t common \t senses
 // Lists are separated by \x1f, senses by \x1e, glosses within a sense by "; ".
 // A kana form restricted to some kanji forms is written as kana[kanji1|kanji2].
@@ -51,7 +51,7 @@ for ( const word of jmdict.words ) {
 
 const text = lines.join( '\n' ) + '\n';
 const header = `# JMdict ${ jmdict.dictDate } (jmdict-simplified ${ jmdict.version }), CC BY-SA 4.0, EDRDG\n`;
-const output = path.join( path.dirname( new URL( import.meta.url ).pathname ), '../data/jmdict-eng.txt.gz' );
+const output = path.join( path.dirname( new URL( import.meta.url ).pathname ), '../dict/jmdict-eng.txt.gz' );
 
 fs.writeFileSync( output, zlib.gzipSync( header + text, { level: 9 } ) );
 
