@@ -311,8 +311,15 @@ main {
 	margin-top: 32px;
 }
 
-.credits a {
+.credits a,
+.source a {
 	color: inherit;
+}
+
+.source {
+	color: var(--muted);
+	font-size: 12px;
+	margin-top: 8px;
 }
 
 #sheet {
