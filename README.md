@@ -14,17 +14,19 @@ Everything runs on your device in the browser. After the first visit it works of
 
 Models run on [ONNX Runtime Web](https://onnxruntime.ai/), using WebGPU when available and WASM otherwise.
 
-## Updating the dictionary
+## Dictionary
 
-`dict/jmdict-eng.txt.gz` (6.5 MB) is generated from [jmdict-simplified](https://github.com/scriptin/jmdict-simplified/releases):
+The dictionary file isn't stored in the repo. It's built from the [jmdict-simplified](https://github.com/scriptin/jmdict-simplified/releases) release named in `dict/release.txt`:
 
 ```sh
-gh release download -R scriptin/jmdict-simplified -p 'jmdict-eng-[0-9]*.json.tgz'
-tar xzf jmdict-eng-*.json.tgz
-node scripts/build-jmdict.mjs jmdict-eng-*.json
+node scripts/build-jmdict.mjs
 ```
 
-Then bump `CACHE` in `sw.js`.
+On the first Monday of each month, a GitHub Action moves `dict/release.txt` to the latest release and deploys it.
+
+## Deploying
+
+Every push to `main` deploys to GitHub Pages. `scripts/build-site.mjs` copies the app's files and stamps `sw.js` with a hash per file, so returning visitors only download the files that changed.
 
 ## Debugging
 

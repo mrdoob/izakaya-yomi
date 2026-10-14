@@ -1,0 +1,56 @@
+# On the first Monday of each month, moves dict/release.txt to the latest
+# jmdict-simplified release and deploys it.
+
+name: Update JMdict
+
+on:
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - name: Only run on the first Monday of the month
+        id: when
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ] && [ "$(date -u +%d)" -gt 7 ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - if: steps.when.outputs.run == 'true'
+        uses: actions/checkout@v7
+
+      - name: Update release
+        if: steps.when.outputs.run == 'true'
+        id: release
+        run: |
+          latest=$(gh release view -R scriptin/jmdict-simplified --json tagName --jq .tagName)
+          current=$(cat dict/release.txt)
+          echo "JMdict release: current $current, latest $latest"
+          if [ "$latest" = "$current" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "$latest" > dict/release.txt
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "latest=$latest" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Commit and deploy
+        if: steps.release.outputs.changed == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -am "Update JMdict to ${{ steps.release.outputs.latest }}"
+          git push
+          # Pushes made with the workflow token don't trigger other workflows, so start the deploy directly.
+          gh workflow run deploy.yml --ref main
