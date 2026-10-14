@@ -35,46 +35,6 @@ new ResizeObserver( () => {
 
 } ).observe( $( 'header' ) );
 
-// Service worker: offline cache and cross-origin isolation (multithreaded WASM).
-
-if ( 'serviceWorker' in navigator ) {
-
-	navigator.serviceWorker.register( './sw.js' ).then( registration => {
-
-		if ( ! self.crossOriginIsolated && registration.active && ! sessionStorageGet( 'coi-reloaded' ) ) {
-
-			sessionStorageSet( 'coi-reloaded', '1' );
-			location.reload();
-
-		}
-
-	} ).catch( error => console.warn( 'Service worker not available, offline mode is disabled.', error ) );
-
-	navigator.serviceWorker.addEventListener( 'controllerchange', () => {
-
-		if ( ! self.crossOriginIsolated && ! sessionStorageGet( 'coi-reloaded' ) ) {
-
-			sessionStorageSet( 'coi-reloaded', '1' );
-			location.reload();
-
-		}
-
-	} );
-
-}
-
-function sessionStorageGet( key ) {
-
-	try { return sessionStorage.getItem( key ); } catch { return null; }
-
-}
-
-function sessionStorageSet( key, value ) {
-
-	try { sessionStorage.setItem( key, value ); } catch { /* ignore */ }
-
-}
-
 // Status
 
 let failed = false;

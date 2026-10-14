@@ -17,6 +17,7 @@ const ASSETS = [
 	'src/glossary.js',
 	'src/dictionary.js',
 	'src/fetch.js',
+	'src/pwa.js',
 	'src/zoom.js',
 	'dict/jmdict-eng.txt.gz',
 	'models/det.onnx',
@@ -33,10 +34,52 @@ const ASSETS = [
 // App code is fetched from the network first so updates show up; big files come from the cache.
 const NETWORK_FIRST = /\/$|\.(html|css|js|webmanifest)$/;
 
+async function broadcast( message ) {
+
+	for ( const client of await self.clients.matchAll( { type: 'window', includeUncontrolled: true } ) ) {
+
+		client.postMessage( message );
+
+	}
+
+}
+
+// Caches everything, reporting progress to the page as files arrive.
+
 self.addEventListener( 'install', event => {
 
-	event.waitUntil( caches.open( CACHE ).then( cache => cache.addAll( ASSETS ) ) );
+	event.waitUntil( ( async () => {
+
+		const cache = await caches.open( CACHE );
+		let done = 0;
+
+		await Promise.all( ASSETS.map( async asset => {
+
+			const response = await fetch( asset );
+			if ( ! response.ok ) throw new Error( `Failed to cache ${ asset }: ${ response.status }` );
+			await cache.put( asset, response );
+			broadcast( { type: 'cache-progress', done: ++ done, total: ASSETS.length } );
+
+		} ) );
+
+	} )() );
+
 	self.skipWaiting();
+
+} );
+
+self.addEventListener( 'message', event => {
+
+	if ( event.data?.type !== 'cache-status' ) return;
+
+	event.waitUntil( ( async () => {
+
+		const cache = await caches.open( CACHE );
+		const cached = await Promise.all( ASSETS.map( asset => cache.match( asset ) ) );
+		const done = cached.filter( Boolean ).length;
+		event.source.postMessage( { type: 'cache-progress', done, total: ASSETS.length } );
+
+	} )() );
 
 } );
 

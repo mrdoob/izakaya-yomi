@@ -470,3 +470,48 @@ main {
 .sheet-open .actions.floating {
 	display: none;
 }
+
+/* Start screen: offline and install status. */
+
+#offline-status {
+	font-size: 14px;
+	color: var(--muted);
+	margin: 8px 0 0;
+}
+
+#offline-status::before {
+	content: "";
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-right: 8px;
+	vertical-align: 1px;
+	background: var(--muted);
+}
+
+#offline-status[data-state="saving"]::before {
+	background: #e0a32f;
+	animation: pulse 1s ease-in-out infinite alternate;
+}
+
+#offline-status[data-state="ready"]::before {
+	background: #3fb56b;
+}
+
+@keyframes pulse {
+	to {
+		opacity: 0.3;
+	}
+}
+
+.install {
+	font-size: 14px;
+	color: var(--muted);
+	margin-top: 16px;
+}
+
+.install a {
+	color: var(--accent);
+	font-weight: 600;
+}
