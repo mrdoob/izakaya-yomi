@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 	<meta charset="utf-8">
-	<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 	<meta name="theme-color" content="#16120f">
 	<meta name="description" content="Take a photo of a Japanese menu and see how to read every kanji. Runs entirely on your phone.">
 	<title>Izakaya Yomi</title>
@@ -56,12 +56,14 @@
 		</section>
 
 		<section id="viewer" hidden>
-			<div class="photo">
-				<canvas id="photo"></canvas>
-				<svg id="overlay" preserveAspectRatio="none"></svg>
+			<div class="photo" id="frame">
+				<div id="stage">
+					<canvas id="photo"></canvas>
+					<svg id="overlay" preserveAspectRatio="none"></svg>
+				</div>
 			</div>
 			<p id="summary"></p>
-			<div class="actions sticky">
+			<div class="actions floating">
 				<label class="button primary">
 					<input type="file" accept="image/*" capture="environment" hidden>
 					New photo

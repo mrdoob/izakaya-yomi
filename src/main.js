@@ -1,6 +1,7 @@
 import { loadOCR, recognize } from './ocr.js';
 import { loadReading, annotate, toHiragana } from './reading.js';
 import { loadDictionary } from './dictionary.js';
+import { PhotoZoom } from './zoom.js';
 
 const MAX_IMAGE_SIDE = 2048;
 
@@ -15,6 +16,24 @@ const photo = $( '#photo' );
 const overlay = $( '#overlay' );
 const sheet = $( '#sheet' );
 const card = $( '#card' );
+const frame = $( '#frame' );
+
+const zoom = new PhotoZoom( frame, $( '#stage' ) );
+
+// iOS Safari ignores user-scalable=no, so block its pinch gestures directly.
+// The photo has its own zoom.
+
+for ( const type of [ 'gesturestart', 'gesturechange' ] ) {
+
+	document.addEventListener( type, event => event.preventDefault() );
+
+}
+
+new ResizeObserver( () => {
+
+	document.body.style.setProperty( '--header-height', `${ $( 'header' ).offsetHeight }px` );
+
+} ).observe( $( 'header' ) );
 
 // Service worker: offline cache and cross-origin isolation (multithreaded WASM).
 
@@ -192,6 +211,8 @@ async function process( file ) {
 
 		intro.hidden = true;
 		viewer.hidden = false;
+		document.body.classList.add( 'viewing' );
+		zoom.setImage( photo.width, photo.height );
 		overlay.innerHTML = '';
 		overlay.setAttribute( 'viewBox', `0 0 ${ photo.width } ${ photo.height }` );
 		closeSheet();
@@ -212,9 +233,10 @@ async function process( file ) {
 		render( lines );
 
 		const seconds = ( ( performance.now() - start ) / 1000 ).toFixed( 1 );
+		$( '#summary' ).title = `Running on ${ backend }`;
 		setStatus( null );
 		$( '#summary' ).textContent = lines.length > 0
-			? `Tap a line to see how to read it · ${ lines.length } lines · ${ seconds }s · ${ backend }`
+			? `Tap a line to read it · ${ lines.length } lines · ${ seconds }s`
 			: 'No Japanese text found. Try getting closer, or a sharper photo.';
 
 	} catch ( error ) {
@@ -239,6 +261,7 @@ function escape( text ) {
 }
 
 let cards = [];
+let quads = [];
 let current = - 1;
 
 function render( lines ) {
@@ -249,6 +272,8 @@ function render( lines ) {
 		return `<polygon class="box" data-index="${ i }" points="${ points }" />`;
 
 	} ).join( '' );
+
+	quads = lines.map( line => line.quad );
 
 	cards = lines.map( line => {
 
@@ -306,12 +331,11 @@ function select( index ) {
 
 	requestAnimationFrame( () => {
 
-		const rect = box.getBoundingClientRect();
-		const top = document.querySelector( 'header' ).getBoundingClientRect().bottom + 8;
-		const bottom = sheet.getBoundingClientRect().top - 8;
+		updateCoveredArea();
 
-		if ( rect.top < top ) window.scrollBy( { top: rect.top - top, behavior: 'smooth' } );
-		else if ( rect.bottom > bottom ) window.scrollBy( { top: rect.bottom - bottom, behavior: 'smooth' } );
+		const xs = quads[ current ].map( p => p[ 0 ] );
+		const ys = quads[ current ].map( p => p[ 1 ] );
+		zoom.reveal( Math.min( ...xs ), Math.min( ...ys ), Math.max( ...xs ), Math.max( ...ys ) );
 
 	} );
 
@@ -322,15 +346,20 @@ function closeSheet() {
 	current = - 1;
 	sheet.hidden = true;
 	document.body.classList.remove( 'sheet-open' );
+	zoom.setCoveredBottom( 0 );
 	for ( const element of overlay.querySelectorAll( '.selected' ) ) element.classList.remove( 'selected' );
 
 }
 
-new ResizeObserver( () => {
+function updateCoveredArea() {
 
-	document.body.style.setProperty( '--sheet-height', `${ sheet.offsetHeight }px` );
+	if ( sheet.hidden ) return;
+	const covered = frame.getBoundingClientRect().bottom - sheet.getBoundingClientRect().top;
+	zoom.setCoveredBottom( Math.max( 0, covered ) );
 
-} ).observe( sheet );
+}
+
+new ResizeObserver( updateCoveredArea ).observe( sheet );
 
 // Taps select the box under the finger, or the nearest one if the finger is close enough.
 
@@ -445,6 +474,7 @@ $( '#again' ).addEventListener( 'click', () => {
 	closeSheet();
 	viewer.hidden = true;
 	intro.hidden = false;
+	document.body.classList.remove( 'viewing' );
 	window.scrollTo( 0, 0 );
 
 } );

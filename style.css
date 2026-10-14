@@ -12,6 +12,7 @@
 	--selected-fill: rgba(255, 106, 77, 0.2);
 	--border: #3a3028;
 	--shadow: rgba(0, 0, 0, 0.4);
+	--overlay-bg: rgba(22, 18, 15, 0.75);
 	color-scheme: dark;
 }
 
@@ -29,6 +30,7 @@
 		--selected-fill: rgba(31, 111, 199, 0.15);
 		--border: #e3d7c6;
 		--shadow: rgba(60, 40, 20, 0.12);
+		--overlay-bg: rgba(255, 250, 243, 0.85);
 		color-scheme: light;
 	}
 }
@@ -38,6 +40,7 @@
 }
 
 html {
+	touch-action: pan-x pan-y;
 	-webkit-text-size-adjust: 100%;
 }
 
@@ -97,8 +100,10 @@ h1 {
 }
 
 #status {
-	position: sticky;
-	top: 55px;
+	position: fixed;
+	top: var(--header-height, 55px);
+	left: 0;
+	right: 0;
 	z-index: 9;
 	padding: 10px 16px;
 	background: var(--surface-2);
@@ -159,13 +164,6 @@ main {
 	flex-wrap: wrap;
 }
 
-.actions.sticky {
-	position: sticky;
-	bottom: 0;
-	padding: 12px 0 max(12px, env(safe-area-inset-bottom));
-	background: linear-gradient(transparent, var(--bg) 30%);
-}
-
 .button {
 	appearance: none;
 	font: inherit;
@@ -187,32 +185,8 @@ main {
 	color: var(--accent-text);
 }
 
-#viewer {
-	padding-top: 16px;
-}
-
 #viewer[hidden], #intro[hidden] {
 	display: none;
-}
-
-.photo {
-	position: relative;
-	border-radius: 12px;
-	overflow: hidden;
-	background: var(--surface);
-}
-
-#photo {
-	display: block;
-	width: 100%;
-	height: auto;
-}
-
-#overlay {
-	position: absolute;
-	inset: 0;
-	width: 100%;
-	height: 100%;
 }
 
 .box {
@@ -228,12 +202,6 @@ main {
 	stroke: var(--selected);
 	stroke-width: 3;
 	fill: var(--selected-fill);
-}
-
-#summary {
-	color: var(--muted);
-	font-size: 13px;
-	margin: 8px 0 4px;
 }
 
 .line {
@@ -347,18 +315,6 @@ main {
 	color: inherit;
 }
 
-#viewer {
-	padding-bottom: 0;
-}
-
-.sheet-open #viewer {
-	padding-bottom: var(--sheet-height, 40vh);
-}
-
-.sheet-open .actions.sticky {
-	display: none;
-}
-
 #sheet {
 	position: fixed;
 	left: 0;
@@ -426,4 +382,91 @@ main {
 	overflow-y: auto;
 	padding: 4px 16px 16px;
 	overscroll-behavior: contain;
+}
+
+/* Photo viewer: fills the screen below the header, with its own zoom. */
+
+.viewing {
+	overflow: hidden;
+}
+
+#viewer {
+	position: fixed;
+	top: var(--header-height, 55px);
+	left: 0;
+	right: 0;
+	bottom: 0;
+}
+
+.photo {
+	position: absolute;
+	inset: 0;
+	overflow: hidden;
+	touch-action: none;
+	user-select: none;
+	-webkit-user-select: none;
+	-webkit-touch-callout: none;
+	background: var(--bg);
+}
+
+#stage {
+	position: absolute;
+	top: 0;
+	left: 0;
+	transform-origin: 0 0;
+	will-change: transform;
+}
+
+#photo {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+#overlay {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
+}
+
+#summary {
+	position: absolute;
+	top: 10px;
+	left: 50%;
+	transform: translateX(-50%);
+	max-width: calc(100% - 32px);
+	margin: 0;
+	padding: 6px 14px;
+	border-radius: 999px;
+	background: var(--overlay-bg);
+	color: var(--text);
+	font-size: 13px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	pointer-events: none;
+	backdrop-filter: blur(8px);
+	-webkit-backdrop-filter: blur(8px);
+}
+
+#summary:empty {
+	display: none;
+}
+
+.actions.floating {
+	position: absolute;
+	left: 16px;
+	right: 16px;
+	bottom: max(16px, env(safe-area-inset-bottom));
+	pointer-events: none;
+}
+
+.actions.floating > * {
+	pointer-events: auto;
+	box-shadow: 0 4px 16px var(--shadow);
+}
+
+.sheet-open .actions.floating {
+	display: none;
 }
