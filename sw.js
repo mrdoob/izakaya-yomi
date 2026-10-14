@@ -1,8 +1,6 @@
 // Caches everything for offline use and adds the headers needed for
 // cross-origin isolation (multithreaded WASM), which GitHub Pages can't set.
 
-const CACHE = 'izakaya-yomi-v5';
-
 const ASSETS = [
 	'./',
 	'index.html',
@@ -27,12 +25,47 @@ const ASSETS = [
 	'vendor/ort/ort-wasm-simd-threaded.asyncify.mjs',
 	'vendor/ort/ort-wasm-simd-threaded.asyncify.wasm',
 	'vendor/kuromoji/kuromoji.js',
-	...[ 'base', 'cc', 'check', 'tid', 'tid_map', 'tid_pos', 'unk', 'unk_char', 'unk_compat', 'unk_invoke', 'unk_map', 'unk_pos' ]
-		.map( name => `vendor/kuromoji/dict/${ name }.dat.gz` )
+	'vendor/kuromoji/dict/base.dat.gz',
+	'vendor/kuromoji/dict/cc.dat.gz',
+	'vendor/kuromoji/dict/check.dat.gz',
+	'vendor/kuromoji/dict/tid.dat.gz',
+	'vendor/kuromoji/dict/tid_map.dat.gz',
+	'vendor/kuromoji/dict/tid_pos.dat.gz',
+	'vendor/kuromoji/dict/unk.dat.gz',
+	'vendor/kuromoji/dict/unk_char.dat.gz',
+	'vendor/kuromoji/dict/unk_compat.dat.gz',
+	'vendor/kuromoji/dict/unk_invoke.dat.gz',
+	'vendor/kuromoji/dict/unk_map.dat.gz',
+	'vendor/kuromoji/dict/unk_pos.dat.gz'
 ];
 
-// App code is fetched from the network first so updates show up; big files come from the cache.
+// Content hash of each asset, filled in at deploy time by scripts/stamp-sw.mjs.
+// Files are cached by hash, so an update only downloads the files that changed.
+// Empty while developing: code then comes from the network first so edits show up.
+const HASHES = {};
+
+const STAMPED = Object.keys( HASHES ).length > 0;
+const CACHE = STAMPED ? `izakaya-yomi-${ HASHES[ 'sw' ] }` : 'izakaya-yomi-dev';
 const NETWORK_FIRST = /\/$|\.(html|css|js|webmanifest)$/;
+
+function cacheKey( asset ) {
+
+	return STAMPED ? `${ asset }?v=${ HASHES[ asset ] }` : asset;
+
+}
+
+// The asset a request is for (relative to the app), or null.
+
+function assetFor( request ) {
+
+	const scope = new URL( self.registration.scope );
+	const url = new URL( request.url );
+	if ( url.origin !== scope.origin || ! url.pathname.startsWith( scope.pathname ) ) return null;
+
+	const path = url.pathname.slice( scope.pathname.length ) || './';
+	return ASSETS.includes( path ) ? path : null;
+
+}
 
 async function broadcast( message ) {
 
@@ -45,6 +78,7 @@ async function broadcast( message ) {
 }
 
 // Caches everything, reporting progress to the page as files arrive.
+// Files already cached by a previous version with the same hash are reused.
 
 self.addEventListener( 'install', event => {
 
@@ -55,9 +89,17 @@ self.addEventListener( 'install', event => {
 
 		await Promise.all( ASSETS.map( async asset => {
 
-			const response = await fetch( asset );
-			if ( ! response.ok ) throw new Error( `Failed to cache ${ asset }: ${ response.status }` );
-			await cache.put( asset, response );
+			const key = cacheKey( asset );
+			let response = STAMPED ? await caches.match( key ) : undefined;
+
+			if ( response === undefined ) {
+
+				response = await fetch( asset, { cache: 'no-cache' } );
+				if ( ! response.ok ) throw new Error( `Failed to cache ${ asset }: ${ response.status }` );
+
+			}
+
+			await cache.put( key, response );
 			broadcast( { type: 'cache-progress', done: ++ done, total: ASSETS.length } );
 
 		} ) );
@@ -75,7 +117,7 @@ self.addEventListener( 'message', event => {
 	event.waitUntil( ( async () => {
 
 		const cache = await caches.open( CACHE );
-		const cached = await Promise.all( ASSETS.map( asset => cache.match( asset ) ) );
+		const cached = await Promise.all( ASSETS.map( asset => cache.match( cacheKey( asset ) ) ) );
 		const done = cached.filter( Boolean ).length;
 		event.source.postMessage( { type: 'cache-progress', done, total: ASSETS.length } );
 
@@ -106,19 +148,19 @@ function isolate( response ) {
 
 }
 
-async function networkFirst( request ) {
+async function networkFirst( request, key ) {
 
 	const cache = await caches.open( CACHE );
 
 	try {
 
 		const response = await fetch( request );
-		if ( response.ok ) cache.put( request, response.clone() );
+		if ( response.ok ) cache.put( key, response.clone() );
 		return response;
 
 	} catch ( error ) {
 
-		const cached = await cache.match( request, { ignoreSearch: true } );
+		const cached = await cache.match( key );
 		if ( cached ) return cached;
 		throw error;
 
@@ -126,14 +168,14 @@ async function networkFirst( request ) {
 
 }
 
-async function cacheFirst( request ) {
+async function cacheFirst( request, key ) {
 
 	const cache = await caches.open( CACHE );
-	const cached = await cache.match( request );
+	const cached = await cache.match( key );
 	if ( cached ) return cached;
 
 	const response = await fetch( request );
-	if ( response.ok ) cache.put( request, response.clone() );
+	if ( response.ok ) cache.put( key, response.clone() );
 	return response;
 
 }
@@ -141,11 +183,20 @@ async function cacheFirst( request ) {
 self.addEventListener( 'fetch', event => {
 
 	const { request } = event;
-	const url = new URL( request.url );
+	if ( request.method !== 'GET' ) return;
 
-	if ( request.method !== 'GET' || url.origin !== location.origin ) return;
+	const asset = assetFor( request );
 
-	const handler = request.mode === 'navigate' || NETWORK_FIRST.test( url.pathname ) ? networkFirst : cacheFirst;
-	event.respondWith( handler( request ).then( isolate ) );
+	if ( asset === null ) {
+
+		// Other same-origin requests still need the isolation headers.
+		if ( new URL( request.url ).origin === location.origin ) event.respondWith( fetch( request ).then( isolate ) );
+		return;
+
+	}
+
+	const key = cacheKey( asset );
+	const handler = ! STAMPED && NETWORK_FIRST.test( asset ) ? networkFirst : cacheFirst;
+	event.respondWith( handler( request, key ).then( isolate ) );
 
 } );
