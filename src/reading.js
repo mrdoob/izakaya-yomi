@@ -108,7 +108,16 @@ export function annotate( text ) {
 
 	flush();
 
-	return joinCompounds( words ).map( w => ( { ...w, meanings: meaningsFor( w ) } ) );
+	return joinCompounds( words ).map( w => {
+
+		// The reading we picked first, then the others JMdict knows (common ones first).
+		// Not for 円 (prices), where the alternative まる (circle) is never meant.
+		const others = hasKanji( w.surface ) && w.reading && w.surface !== '円' ? dictionary.readings( w.surface ).filter( r => r !== w.reading ) : [];
+		const readings = others.length > 0 ? [ w.reading, ...others ].slice( 0, MAX_READINGS ) : [];
+
+		return { ...w, defaultReading: w.reading, readings, meanings: meaningsFor( w ) };
+
+	} );
 
 }
 
@@ -155,12 +164,24 @@ function joinCompounds( words ) {
 
 }
 
+const MAX_READINGS = 4;
+
+// The same word read differently (生 なま → せい), with the meaning for that reading.
+
+export function withReading( w, reading ) {
+
+	const next = { ...word( w.surface, reading, w.pos, w.base ), defaultReading: w.defaultReading, readings: w.readings };
+	next.meanings = meaningsFor( next );
+	return next;
+
+}
+
 const NO_MEANING = new Set( [ '数', '記号', '助詞', '助動詞', '接頭詞', 'フィラー' ] );
 
 function meaningsFor( w ) {
 
 	if ( NO_MEANING.has( w.pos ) || w.surface === '円' ) return null;
-	if ( MENU_ENGLISH[ w.surface ] ) return [ MENU_ENGLISH[ w.surface ] ];
+	if ( MENU_ENGLISH[ w.surface ] && w.reading === ( w.defaultReading ?? w.reading ) ) return [ MENU_ENGLISH[ w.surface ] ];
 	if ( /^[ぁ-ゖ]$/.test( w.surface ) ) return null;
 
 	const entry = dictionary.lookup( w.surface, w.reading ) ?? ( w.base ? dictionary.lookup( w.base ) : null );

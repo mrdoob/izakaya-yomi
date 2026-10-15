@@ -279,9 +279,29 @@ main {
 	min-width: 3em;
 }
 
-.meaning .senses {
+.meaning .details {
 	min-width: 0;
 	color: var(--muted);
+}
+
+.alternatives {
+	display: block;
+	font-size: 14px;
+	margin-top: 2px;
+}
+
+.alternative {
+	appearance: none;
+	font: inherit;
+	font-size: 15px;
+	color: var(--accent);
+	background: none;
+	border: none;
+	padding: 2px 0;
+	cursor: pointer;
+	text-decoration: underline;
+	text-decoration-color: color-mix(in srgb, var(--accent) 40%, transparent);
+	text-underline-offset: 3px;
 }
 
 .meaning .sense {
@@ -305,7 +325,12 @@ main {
 	content: " …";
 }
 
-.hide-english .meanings {
+.hide-english .senses,
+.hide-english .meaning:not(:has(.alternatives)) {
+	display: none;
+}
+
+.hide-english .meanings:not(:has(.alternatives)) {
 	display: none;
 }
 

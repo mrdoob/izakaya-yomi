@@ -1,5 +1,5 @@
 import { loadOCR, recognize } from './ocr.js';
-import { loadReading, annotate, toHiragana } from './reading.js';
+import { loadReading, annotate, toHiragana, withReading } from './reading.js';
 import { loadDictionary } from './dictionary.js';
 import { PhotoZoom } from './zoom.js';
 
@@ -177,6 +177,7 @@ async function process( file ) {
 		overlay.setAttribute( 'viewBox', `0 0 ${ photo.width } ${ photo.height }` );
 		closeSheet();
 		cards = [];
+		lineWords = [];
 
 		if ( backend === null ) setStatus( 'Waiting for models…' );
 		await ready;
@@ -221,6 +222,7 @@ function escape( text ) {
 }
 
 let cards = [];
+let lineWords = [];
 let quads = [];
 let current = - 1;
 
@@ -235,37 +237,50 @@ function render( lines ) {
 
 	quads = lines.map( line => line.quad );
 
-	cards = lines.map( line => {
+	lineWords = lines.map( line => annotate( line.text ) );
+	cards = lineWords.map( buildCard );
 
-		const words = annotate( line.text );
+}
 
-		const ruby = words.map( word => word.parts.map( part => part.ruby
-			? `<ruby>${ escape( part.text ) }<rt>${ escape( part.ruby ) }</rt></ruby>`
-			: escape( part.text )
-		).join( '' ) ).join( '' );
+function buildCard( words ) {
 
-		const romaji = words
-			.filter( word => /[a-z0-9]/i.test( word.romaji ) )
-			.map( word => word.romaji )
-			.join( ' ' );
+	const ruby = words.map( word => word.parts.map( part => part.ruby
+		? `<ruby>${ escape( part.text ) }<rt>${ escape( part.ruby ) }</rt></ruby>`
+		: escape( part.text )
+	).join( '' ) ).join( '' );
 
-		const meanings = words.filter( word => word.meanings ).map( word => `<li class="meaning">
+	const romaji = words
+		.filter( word => /[a-z0-9]/i.test( word.romaji ) )
+		.map( word => word.romaji )
+		.join( ' ' );
+
+	const meanings = words.map( ( word, i ) => {
+
+		const alternatives = word.readings.filter( reading => reading !== word.reading );
+		if ( ! word.meanings && alternatives.length === 0 ) return '';
+
+		const senses = ( word.meanings ?? [] ).map( ( sense, n ) => `<span class="sense">${ word.meanings.length > 1 ? `<b>${ n + 1 }</b> ` : '' }${ escape( sense ) }</span>` ).join( '' );
+		const readings = alternatives.length > 0
+			? `<span class="alternatives">Also read: ${ alternatives.map( reading => `<button class="alternative" data-word="${ i }" data-reading="${ escape( reading ) }" lang="ja">${ escape( reading ) }</button>` ).join( ' · ' ) }</span>`
+			: '';
+
+		return `<li class="meaning">
 			<span class="word" lang="ja">${ escape( word.surface ) }</span>
-			<span class="senses">${ word.meanings.map( ( sense, n ) => `<span class="sense">${ word.meanings.length > 1 ? `<b>${ n + 1 }</b> ` : '' }${ escape( sense ) }</span>` ).join( '' ) }</span>
-		</li>` ).join( '' );
+			<span class="details"><span class="senses">${ senses }</span>${ readings }</span>
+		</li>`;
 
-		const speech = words.map( word => word.reading ?? toHiragana( word.surface ) ).join( '' );
+	} ).join( '' );
 
-		return `<div class="line">
-			<p class="ja" lang="ja">${ ruby }</p>
-			<button class="speak" data-speech="${ escape( speech ) }" aria-label="Listen">
-				<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
-			</button>
-		</div>
-		<p class="romaji">${ escape( romaji ) }</p>
-		${ meanings ? `<ul class="meanings">${ meanings }</ul>` : '' }`;
+	const speech = words.map( word => word.reading ?? toHiragana( word.surface ) ).join( '' );
 
-	} );
+	return `<div class="line">
+		<p class="ja" lang="ja">${ ruby }</p>
+		<button class="speak" data-speech="${ escape( speech ) }" aria-label="Listen">
+			<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path fill="currentColor" d="M3 9v6h4l5 5V4L7 9H3zm13.5 3A4.5 4.5 0 0 0 14 8v8a4.5 4.5 0 0 0 2.5-4zM14 3.2v2.1a7 7 0 0 1 0 13.4v2.1a9 9 0 0 0 0-17.6z"/></svg>
+		</button>
+	</div>
+	<p class="romaji">${ escape( romaji ) }</p>
+	${ meanings ? `<ul class="meanings">${ meanings }</ul>` : '' }`;
 
 }
 
@@ -376,6 +391,21 @@ card.addEventListener( 'click', event => {
 
 	const button = event.target.closest( '.speak' );
 	if ( button ) speak( button.dataset.speech );
+
+	// Switch a word to another reading and rebuild the card.
+
+	const alternative = event.target.closest( '.alternative' );
+
+	if ( alternative ) {
+
+		const words = lineWords[ current ];
+		const index = Number( alternative.dataset.word );
+		words[ index ] = withReading( words[ index ], alternative.dataset.reading );
+		cards[ current ] = buildCard( words );
+		card.innerHTML = cards[ current ];
+		return;
+
+	}
 
 	const meaning = event.target.closest( '.meaning' );
 	if ( meaning ) meaning.classList.toggle( 'expanded' );

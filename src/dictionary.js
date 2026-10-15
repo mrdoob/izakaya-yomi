@@ -121,3 +121,42 @@ export function lookup( form, reading = null ) {
 	return { reading: toHiragana( matching || readings[ 0 ] ), senses: best.senses };
 
 }
+
+// ぢ and づ are pronounced like じ and ず, so じゅう and ぢゅう are the same reading.
+
+function sound( reading ) {
+
+	return reading.replaceAll( 'ぢ', 'じ' ).replaceAll( 'づ', 'ず' );
+
+}
+
+// Every distinct reading JMdict has for a written form (hiragana), common words first.
+
+export function readings( form ) {
+
+	if ( index === null ) return [];
+
+	const entries = ( index.get( form ) ?? [] ).map( entry );
+
+	// Readings JMdict only writes in katakana are loanwords or jargon (中 → チュン, a mahjong tile).
+	const hiragana = new Set( entries.flatMap( e => readingsFor( e, form ) ).filter( r => /[ぁ-ゖ]/.test( r ) ).map( sound ) );
+
+	const common = [];
+	const rest = [];
+	const seen = new Set();
+
+	for ( const e of entries ) {
+
+		for ( const reading of readingsFor( e, form ).map( toHiragana ) ) {
+
+			if ( seen.has( sound( reading ) ) || ! hiragana.has( sound( reading ) ) ) continue;
+			seen.add( sound( reading ) );
+			( e.common ? common : rest ).push( reading );
+
+		}
+
+	}
+
+	return [ ...common, ...rest ];
+
+}
