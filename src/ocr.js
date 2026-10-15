@@ -193,7 +193,120 @@ function findBoxes( prob, width, height ) {
 
 	}
 
-	return boxes;
+	return separateNeighbors( boxes, prob, width, height );
+
+}
+
+// Expanded boxes of text that sits close together on a line overlap, so each crop picks up
+// the edge of its neighbor (焼き鳥 + 680円 → "焼き鳥6"). Where two boxes overlap along
+// their reading direction, both are cut where the text probability is lowest: the gap.
+
+function separateNeighbors( boxes, prob, width, height ) {
+
+	const frames = boxes.map( quad => {
+
+		const [ tl, tr, , bl ] = quad;
+		const w = Math.hypot( tr[ 0 ] - tl[ 0 ], tr[ 1 ] - tl[ 1 ] );
+		const h = Math.hypot( bl[ 0 ] - tl[ 0 ], bl[ 1 ] - tl[ 1 ] );
+		const ex = [ ( tr[ 0 ] - tl[ 0 ] ) / w, ( tr[ 1 ] - tl[ 1 ] ) / w ];
+		const ey = [ ( bl[ 0 ] - tl[ 0 ] ) / h, ( bl[ 1 ] - tl[ 1 ] ) / h ];
+		const vertical = h / w >= 1.5;
+
+		// Reading axis (along the text) and cross axis, with their lengths.
+		return vertical
+			? { origin: tl, axis: ey, cross: ex, length: h, thickness: w, vertical }
+			: { origin: tl, axis: ex, cross: ey, length: w, thickness: h, vertical };
+
+	} );
+
+	const project = ( frame, [ x, y ] ) => {
+
+		const dx = x - frame.origin[ 0 ];
+		const dy = y - frame.origin[ 1 ];
+		return [ dx * frame.axis[ 0 ] + dy * frame.axis[ 1 ], dx * frame.cross[ 0 ] + dy * frame.cross[ 1 ] ];
+
+	};
+
+	const point = ( frame, s, t ) => [
+		frame.origin[ 0 ] + frame.axis[ 0 ] * s + frame.cross[ 0 ] * t,
+		frame.origin[ 1 ] + frame.axis[ 1 ] * s + frame.cross[ 1 ] * t
+	];
+
+	const sample = ( x, y ) => {
+
+		const ix = Math.round( x );
+		const iy = Math.round( y );
+		return ix < 0 || iy < 0 || ix >= width || iy >= height ? 0 : prob[ iy * width + ix ];
+
+	};
+
+	// Position along the frame's axis, within [start, end], with the least text across [t0, t1].
+
+	const gap = ( frame, start, end, t0, t1 ) => {
+
+		let best = ( start + end ) / 2;
+		let bestValue = Infinity;
+
+		for ( let s = start; s <= end; s ++ ) {
+
+			let sum = 0;
+			let count = 0;
+			for ( let t = t0; t <= t1; t ++ ) {
+
+				sum += sample( ...point( frame, s, t ) );
+				count ++;
+
+			}
+
+			if ( sum / count < bestValue ) {
+
+				bestValue = sum / count;
+				best = s;
+
+			}
+
+		}
+
+		return best;
+
+	};
+
+	return frames.map( ( frame, i ) => {
+
+		let start = 0;
+		let end = frame.length;
+
+		for ( let j = 0; j < frames.length; j ++ ) {
+
+			if ( i === j || frames[ j ].vertical !== frame.vertical ) continue;
+
+			const projected = boxes[ j ].map( p => project( frame, p ) );
+			const s0 = Math.min( ...projected.map( p => p[ 0 ] ) );
+			const s1 = Math.max( ...projected.map( p => p[ 0 ] ) );
+			const t0 = Math.max( 0, Math.min( ...projected.map( p => p[ 1 ] ) ) );
+			const t1 = Math.min( frame.thickness, Math.max( ...projected.map( p => p[ 1 ] ) ) );
+
+			// Only neighbors on the same line: they must share most of the line's thickness.
+			if ( t1 - t0 < 0.5 * frame.thickness ) continue;
+
+			if ( s0 > 0 && s0 < end && s1 > frame.length ) end = gap( frame, s0, end, t0, t1 );
+			else if ( s1 < frame.length && s1 > start && s0 < 0 ) start = gap( frame, start, s1, t0, t1 );
+
+		}
+
+		if ( start === 0 && end === frame.length ) return boxes[ i ];
+
+		const quad = [
+			point( frame, start, 0 ),
+			point( frame, end, 0 ),
+			point( frame, end, frame.thickness ),
+			point( frame, start, frame.thickness )
+		];
+
+		// Back to [tl, tr, br, bl] order for vertical boxes, whose axis runs down the left edge.
+		return frame.vertical ? [ quad[ 0 ], quad[ 3 ], quad[ 2 ], quad[ 1 ] ] : quad;
+
+	} );
 
 }
 
