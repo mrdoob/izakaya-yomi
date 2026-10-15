@@ -452,6 +452,10 @@ async function recognizeRotated( image, quad ) {
 
 }
 
+// Only lines with kana or kanji are kept, so English text, lone prices and logos are skipped.
+
+const JAPANESE = /[\u3005\u3006\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF]/;
+
 // Kanji that look like katakana get mixed up next to katakana: 口ック → ロック, 力ツ → カツ.
 
 const KATAKANA_LOOKALIKES = { 口: 'ロ', 一: 'ー', 力: 'カ', 工: 'エ', 二: 'ニ', 八: 'ハ', 卜: 'ト', 夕: 'タ' };
@@ -518,9 +522,12 @@ export async function recognize( canvas, onProgress = () => {} ) {
 
 		const result = vertical ? await recognizeRotated( image, quad ) : await recognizeHorizontal( image, quad );
 
-		if ( result.text === '' || result.confidence < 0.5 ) continue;
+		if ( result.confidence < 0.5 ) continue;
 
-		lines.push( { quad, size: [ w, h ], vertical, text: fixKatakana( result.text ), confidence: result.confidence } );
+		const text = fixKatakana( result.text );
+		if ( ! JAPANESE.test( text ) ) continue;
+
+		lines.push( { quad, size: [ w, h ], vertical, text, confidence: result.confidence } );
 
 	}
 
